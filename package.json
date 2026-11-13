@@ -1,0 +1,13 @@
+{
+  "name": "saa-studio",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "A Chinese AWS SAA-C03 learning workspace with plans, original practice questions and hands-on labs.",
+  "scripts": {
+    "dev": "node scripts/serve.mjs",
+    "test": "node --test tests/*.test.js",
+    "build": "node scripts/build.mjs"
+  },
+  "engines": {"node": ">=20"}
+}
