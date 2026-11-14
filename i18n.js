@@ -120,7 +120,7 @@ export function tr(value, mode = language) {
   return normalize(text) === english ? text : `${text} / ${english}`;
 }
 export function languagePicker() {
-  return `<label class="language-picker" data-i18n-ignore><span class="language-picker-label">语言 / Language</span><select id="language-select" aria-label="语言 / Language">${[['zh', '中文'], ['en', 'English'], ['bi', '中英对照 / Bilingual']].map(([value, label]) => `<option value="${value}"${language === value ? ' selected' : ''}>${label}</option>`).join('')}</select></label>`;
+  return `<label class="language-picker" data-i18n-ignore><span class="language-picker-label">语言 / Language</span><select id="language-select" aria-label="语言 / Language">${[['zh', '中文'], ['en', 'English'], ['bi', '中英 / Bilingual']].map(([value, label]) => `<option value="${value}"${language === value ? ' selected' : ''}>${label}</option>`).join('')}</select></label>`;
 }
 export function matchesLearningSearch(value, query) {
   const needle = normalize(query).toLocaleLowerCase();
