@@ -1,0 +1,18 @@
+{
+  "name": "saa-progress-sync",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "cf build",
+    "check:deploy": "cf deploy --prebuilt --mode production --dry-run",
+    "deploy": "cf deploy --prebuilt --mode production"
+  },
+  "engines": {
+    "node": ">=22.18.0"
+  },
+  "devDependencies": {
+    "@cloudflare/vite-plugin": "2.0.0-beta.v.17",
+    "cf": "0.15.0",
+    "vite": "8.3.8"
+  }
+}
