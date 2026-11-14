@@ -2,11 +2,11 @@
 
 Cloudflare Worker 为静态 GitHub Pages 网站提供可选的密文进度存储。浏览器通过私人配对码派生独立的认证令牌和 AES-256-GCM 密钥；Worker 不接收配对码或加密密钥，也不能读取课程笔记或答案。
 
-**状态：本次文档更新时，生产部署尚未验证。** 下面是配置资料和部署检查步骤，不能据此认定服务已经上线。
+**已部署并验证（2026-11-13）。** Worker 版本：`d7ffd480-6b9e-494e-83e1-aae94654078b`。真实 API、客户端离线合并及双来源浏览器自动同步已通过验证，具体范围见下文。
 
 ## 配置与部署
 
-预期 Worker 名称：`saa-progress-sync`。预期公开地址：`https://saa-progress-sync.curtis-atiwatt.workers.dev`；应以 Cloudflare 实际部署返回的地址为准。
+Worker 名称：`saa-progress-sync`。公开地址：<https://saa-progress-sync.curtis-atiwatt.workers.dev>。前端 `sync-config.js` 已配置该地址。
 
 现有 Cloudflare 资源标识如下，均为非秘密的资源 ID：
 
@@ -17,7 +17,7 @@ Cloudflare Worker 为静态 GitHub Pages 网站提供可选的密文进度存储
 | Worker D1 binding | `DB` |
 | Compatibility date | `2026-11-13` |
 
-通过 Cloudflare 控制台或已授权连接器执行：
+重新部署时：
 
 1. 在对应 D1 数据库执行 [schema.sql](schema.sql)，创建 `progress`、`create_limits` 及窗口索引。脚本使用 `IF NOT EXISTS`，可重复执行创建步骤；它不是已有不同 schema 的迁移工具。
 2. 将 [worker.js](worker.js) 作为 ES module Worker 部署，设置兼容日期 `2026-11-13`。运行代码不依赖 Node.js built-ins，不需要 `nodejs_compat`。
@@ -37,9 +37,7 @@ CF_SEND_TELEMETRY=false npm --prefix cloud run build
 CF_SEND_TELEMETRY=false npm --prefix cloud run check:deploy
 ```
 
-已在本地完成构建与 dry run：单个 Worker bundle 约 12 KiB，配置仅绑定上表 D1 数据库。Dry run 不上传文件、不调用部署 API，也不能证明真实账户权限或运行状态。产物在 `cloud/.cloudflare/output/v0/`，未跟踪到 Git。
-
-当前 cf 0.15.0 自带的本地 workerd 最高支持 `2026-09-30`，因此直接对 `2026-11-13` 运行本地 startup check 会报兼容日期过新。已用临时产物副本和旧日期验证代码能够启动；生产配置及正式产物保持 `2026-11-13`。这项临时检查不替代生产运行验证。
+构建产物位于 `cloud/.cloudflare/output/v0/`，不跟踪到 Git。`check:deploy` 只检查产物，不上传文件；修改 Worker 或配置后应重新构建，再发布同一份产物。
 
 当维护者需要授权发布时，可以使用单独命名的 cf OAuth profile，并在浏览器亲自确认权限：
 
@@ -53,8 +51,6 @@ CLI 自动附加 `offline_access` 以续期授权。这些权限服务于账户�
 ```bash
 CF_SEND_TELEMETRY=false ./node_modules/.bin/cf deploy --prebuilt --mode production --profile saa-deploy
 ```
-
-生产验证完成前，不要将文档中的“尚未验证”改为“已上线”。
 
 ## API 协议
 
@@ -93,6 +89,13 @@ IP 哈希不是不可逆匿名化保证。应用层限流也不代替 Cloudflare
 
 ## 测试与部署后验证
 
+2026-11-13 验证结果：
+
+- `/health` 返回 `200`；真实 API 的认证拒绝、错误来源拒绝、CORS 预检、创建、读取及 AES-GCM 解密、重复创建冲突全部通过；并发使用同一 revision 更新时，恰好一个 `200`、一个 `409`。
+- 两个真实客户端离线修改后，任务完成/取消、课程、笔记、已完成练习与作答记录正确合并。
+- 浏览器在 `127.0.0.1` 和 `localhost` 两个独立存储中一次配对后，任务双向自动同步；英文与中文界面各自保留，课程及双语笔记同步。练习位置、选择、标记和提交后的判分状态同步，刷新后自动重连；这些操作未手动触发同步。
+- 仓库的 102 项自动测试和静态构建通过。上述浏览器验证针对本地前端连接真实生产后端，不代表每种浏览器或网络环境均已覆盖。
+
 需要 Node.js **22.13.0+**，无需第三方依赖：
 
 ```bash
@@ -109,7 +112,7 @@ Worker 测试使用 D1 API 形状的适配器，底层执行真实内存 SQLite�
 2. 浏览器生成配对码并 POST 密文，随后 GET 能解密还原；数据库无配对码、原始 token 或明文笔记。
 3. 两次使用同一 revision 的 PUT 中只有一次成功，另一次返回 `409`；客户端读取后能够合并重试。
 4. 第二个浏览器使用同一码配对；离线修改不同任务后联网可合并，同一场考试截止时间保持不变。
-5. 在浏览器设置中确认同步成功后，再把服务状态更新为已部署。
+5. 刷新浏览器，确认自动重连且进度保留；发布前端后再检查正式 Pages 页面。
 
 生产验证会创建真实空间；测试应使用专用配对码，不输出或提交这些值。没有删除 API，需要清理验证空间时由账户维护者在 D1 中针对已确认的测试空间摘要删除，避免清理真实学习记录。
 
